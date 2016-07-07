@@ -2,7 +2,8 @@ require ('./models/utility.rb')
 require ('./models/errors.rb')
 
 ### Apartment
-class Apartment < Utility
+class Apartment
+  include Utility
   attr_reader :number, :rent, :square_footage, :number_of_bedrooms, :number_of_bathrooms
 
   # has a number, rent, square footage, number of bedrooms, and number of bathrooms

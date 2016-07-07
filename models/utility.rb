@@ -1,4 +1,4 @@
-class Utility
+module Utility
   def calculate_credit_rating credit_score
     case credit_score
       when 0..559 then :bad

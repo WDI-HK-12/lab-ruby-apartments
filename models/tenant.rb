@@ -1,7 +1,8 @@
 require ('./models/utility.rb')
 
 ### Tenant
-class Tenant < Utility
+class Tenant
+  include Utility
   attr_reader :age, :credit_score, :name
 
   # has a name, age, and credit score

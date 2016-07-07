@@ -2,7 +2,9 @@ require ('./models/utility.rb')
 require ('./models/errors.rb')
 
 ### Building
-class Building < Utility
+class Building
+  include Utility
+
   attr_reader :address
 
   # has an address
@@ -50,6 +52,7 @@ class Building < Utility
   # has a list of tenants, pulled from the tenant lists of all apartments
   def all_tenants
     @apartments.map(&:tenants).flatten
+    # @apartments.map{|a| a.tenants }.flatten
   end
 
   # has a method to retrieve all apartments grouped by `credit_rating`
@@ -57,5 +60,8 @@ class Building < Utility
   def apartments_by_average_credit_rating
     result = {excellent: [], great: [], good: [], mediocre: [], bad: []}
     @apartments.each_with_object(result) {|a,h| h[a.credit_rating] << a}
+    # @apartments.each do |a|
+    #   result[a.credit_rating] << a
+    # end
   end
 end
