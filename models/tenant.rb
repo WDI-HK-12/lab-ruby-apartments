@@ -5,7 +5,6 @@ class Tenant
   include Utility
   attr_reader :age, :credit_score, :name
 
-  # has a name, age, and credit score
   def initialize name, age, credit_score
     @name         = name
     @age          = age

@@ -13,3 +13,9 @@ end
 
 class ApartmentOccupiedError < Exception
 end
+
+class NoSuchBuildingError < Exception
+end
+
+class BuildingOccupiedError < Exception
+end

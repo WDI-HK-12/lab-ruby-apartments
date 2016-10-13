@@ -5,7 +5,7 @@ require ('./models/errors.rb')
 class Building
   include Utility
 
-  attr_reader :address
+  attr_reader :address, :apartments
 
   # has an address
   def initialize address
@@ -15,28 +15,16 @@ class Building
     @apartments = []
   end
 
-  # the list of apartments should not be modified directly
-  # (bonus: actually prevent it from being modified directly)
-  def apartments
-    @apartments.map{|a| a.dup}
-  end
-
   # has a method to add an apartment
   def add_apartment apartment
     @apartments << apartment
   end
 
-  # has a method to remove a specific apartment by its number,
-  # which raises an error if the number is not found or the apartment currently has any tenants
-  # (bonus: allow overriding this constraint)
   def remove_apartment apartment_number, force_removal = false
-    index = @apartments.index { |a| a.number == apartment_number }
-    raise NoSuchApartmentError.new apartment_number if index.nil?
-
-    apartment = @apartments[index]
+    apartment = get_apartment apartment_number
     raise ApartmentOccupiedError.new apartment if !force_removal && apartment.has_tenants?
 
-    @apartments.delete_at index
+    @apartments.delete apartment
   end
 
   # has a total square footage, calculated from all apartments
@@ -63,5 +51,19 @@ class Building
     # @apartments.each do |a|
     #   result[a.credit_rating] << a
     # end
+  end
+
+  def has_tenants?
+    !@apartments.select{|a| a.has_tenants?}.empty?
+  end
+
+  def find_apartment_index apartment_number
+    index = @apartments.index { |a| a.number == apartment_number }
+    raise NoSuchApartmentError.new apartment_number if index.nil?
+    index
+  end
+
+  def get_apartment apartment_number
+    @apartments[find_apartment_index apartment_number]
   end
 end

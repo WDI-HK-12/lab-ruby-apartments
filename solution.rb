@@ -1,180 +1,92 @@
-# Custom Error Classes
-class BadCreditRatingError < Exception
-end
-class NotEnoughBedroomError < Exception
-end
-class NoSuchTenantError < Exception
-end
-class NoSuchApartmentError < Exception
-end
-class ApartmentOccupiedError < Exception
-end
+require ('./models/building')
+require ('./models/apartment')
+require ('./models/tenant')
+require ('./models/utility')
+require ('pp')
 
-# has a credit rating, calculated from the credit score as follows:
-  # 760 or higher is "excellent"
-  # 725 or higher is "great"
-  # 660 or higher is "good"
-  # 560 or higher is "mediocre"
-  # anything lower is "bad"
-def calculate_credit_rating credit_score
-  case credit_score
-    when 0..559 then :bad
-    when 560..659 then :mediocre
-    when 660..724 then :good
-    when 725..759 then :great
-    else :excellent
-  end
-end
+class EstateManager
+  attr_reader :buildings
 
-### Tenant
-class Tenant
-  attr_reader :name, :age, :credit_score
-
-  # has a name, age, and credit score
-  def initialize name, age, credit_score
-    @name = name
-    @age = age
-    @credit_score = credit_score
+  def initialize
+    @buildings = []
   end
 
-  def credit_rating
-    calculate_credit_rating @credit_score
+  def add_building address
+    @buildings << Building.new(address)
   end
 
-  def to_s
-    inspect
-  end
-end
-
-### Apartment
-class Apartment
-  attr_reader :number, :rent, :square_footage, :number_of_bedrooms, :number_of_bathrooms
-
-  # has a number, rent, square footage, number of bedrooms, and number of bathrooms
-  def initialize number, rent, square_footage, number_of_bedrooms, number_of_bathrooms
-    @number = number
-    @rent = rent
-    @square_footage = square_footage
-    @number_of_bedrooms = number_of_bedrooms
-    @number_of_bathrooms = number_of_bathrooms
-
-    # has many tenants
-    @tenants = []
+  def remove_building address, force_removal = false
+    building = get_building address
+    raise BuildingOccupiedError.new address if !force_removal && building.has_tenants?
   end
 
-  # the list of tenants should not be modified directly
-  # (bonus: actually prevent it from being modified directly)
-  def tenants
-    @tenants.dup
+  def add_apartment_to_building address, number, rent, square_footage, number_of_bedrooms, number_of_bathrooms
+    get_building(address).add_apartment Apartment.new number, rent, square_footage, number_of_bedrooms, number_of_bathrooms
   end
 
-  # has a method to add a tenant that raises an error if the tenant has a "bad" credit rating,
-  # or if the new tenant count would go over the number of bedrooms
-  def add_tenant tenant
-    raise BadCreditRatingError.new tenant if tenant.credit_rating == :bad
-    raise NotEnoughBedroomError.new tenant if @tenants.length == @number_of_bedrooms
-
-    @tenants << tenant
+  def remove_apartment_from_building address, number, force_removal=false
+    get_building(address).remove_apartment number, force_removal
   end
 
-  # has a method to remove a specific tenant either by object reference
-  # *or* by name (bonus: do this without checking classes),
-  # which raises an error if the tenant is not found
-  def remove_tenant tenant
-    name_to_remove = tenant
-    name_to_remove = tenant.name unless tenant.to_s == tenant
-    removed = @tenants.reject! {|t| t.name == name_to_remove}
-    raise NoSuchTenantError.new tenant if removed.nil?
+  def add_tenant_to_apartment_in_building address, number, name, age, credit_score
+    get_apartment_in_building(address, number).add_tenant Tenant.new name, age, credit_score
   end
 
-  # has a method that removes all tenants
-  def remove_all_tenants
-    @tenants.clear
+  def remove_tenant_from_apartment_in_building address, number, name
+    get_apartment_in_building(address, number).remove_tenant name
   end
 
-  # has an average credit score, calculated from all tenants
-  def average_credit_score
-    @tenants.inject(0) {|sum,t| sum + t.credit_score}.to_f / @tenants.length
-
-    # The 2 alternative ways require looping the array twice
-    #@tenants.map{|t| t.credit_score}.reduce(:+).to_f / @tenants.length
-    #@tenants.map(&:credit_score).reduce(:+).to_f / @tenants.length
+  def remove_all_tenants_from_apartment_in_building address, number
+    get_apartment_in_building(address, number).remove_all_tenants
   end
 
-  # has a credit rating, calculated from the average credit score using the logic below
-  def credit_rating
-    calculate_credit_rating average_credit_score
-  end
-
-  # helper method
-  def has_tenants?
-    @tenants.any?
-  end
-
-  def to_s
-    inspect
-  end
-end
-
-### Building
-class Building
-  attr_reader :address
-
-  # has an address
-  def initialize address
-    @address = address
-
-    # has many apartments
-    @apartments = []
-  end
-
-  # the list of apartments should not be modified directly
-  # (bonus: actually prevent it from being modified directly)
-  def apartments
-    @apartments.dup
-  end
-
-  # has a method to add an apartment
-  def add_apartment apartment
-    @apartments << apartment
-  end
-
-  # has a method to remove a specific apartment by its number,
-  # which raises an error if the number is not found or the apartment currently has any tenants
-  # (bonus: allow overriding this constraint)
-  def remove_apartment apartment_number, force_removal = false
-    index = @apartments.index { |a| a.number == apartment_number }
-    raise NoSuchApartmentError.new apartment_number if index.nil?
-
-    apartment = @apartments[index]
-    raise ApartmentOccupiedError.new apartment if !force_removal && apartment.has_tenants?
-
-    @apartments.delete_at index
-  end
-
-  # has a total square footage, calculated from all apartments
   def total_square_footage
-    @apartments.inject(0) {|sum,a| sum + a.square_footage}
+    @buildings.inject(0) {|sum,b| sum + b.total_square_footage}
   end
 
-  # has a total monthly revenue, calculated from all apartment rents
   def total_monthly_revenue
-    @apartments.inject(0) {|sum,a| sum + a.rent}
+    @buildings.inject(0) {|sum,b| sum + b.total_monthly_revenue}
   end
 
-  # has a list of tenants, pulled from the tenant lists of all apartments
+  def all_apartments
+    @buildings.map(&:apartments).flatten
+  end
+
   def all_tenants
-    @apartments.map(&:tenants).flatten
+    @buildings.map(&:all_tenants).flatten
   end
 
-  # has a method to retrieve all apartments grouped by `credit_rating`
-  # (bonus: sort the groups by credit rating from `excellent` to `bad`)
-  def apartments_by_average_credit_rating
-    result = {excellent: [], great: [], good: [], mediocre: [], bad: []}
-    @apartments.each_with_object(result) {|a,h| h[a.credit_rating] << a}
+  def find_building_index address
+    index = @buildings.index {|b| b.address == address}
+    raise NoSuchBuildingError.new address if index.nil?
+    index
   end
 
-  def to_s
-    inspect
+  def get_building address
+    @buildings[find_building_index(address)]
+  end
+
+  def get_apartment_in_building address, number
+    get_building(address).get_apartment(number)
   end
 end
+
+denis_estate = EstateManager.new
+
+denis_estate.add_building("108 Queens Road")
+denis_estate.add_building("108 Kings Road")
+
+denis_estate.add_apartment_to_building("108 Queens Road", "7A", 10000, 500, 2, 2)
+denis_estate.add_apartment_to_building("108 Queens Road", "7B", 12000, 600, 2, 2)
+denis_estate.add_apartment_to_building("108 Queens Road", "7C", 15000, 700, 2, 2)
+
+denis_estate.add_apartment_to_building("108 Kings Road", "1A", 10000, 500, 2, 2)
+denis_estate.add_apartment_to_building("108 Kings Road", "1B", 12000, 600, 2, 2)
+denis_estate.add_apartment_to_building("108 Kings Road", "1C", 15000, 700, 2, 2)
+
+denis_estate.add_tenant_to_apartment_in_building("108 Queens Road", "7A", "hector", 18, 700)
+denis_estate.add_tenant_to_apartment_in_building("108 Queens Road", "7A", "oreo",   18, 700)
+denis_estate.add_tenant_to_apartment_in_building("108 Queens Road", "7B", "blues",  18, 637)
+denis_estate.add_tenant_to_apartment_in_building("108 Queens Road", "7B", "jazzy",  18, 600)
+
+pp denis_estate

@@ -4,7 +4,7 @@ require ('./models/errors.rb')
 ### Apartment
 class Apartment
   include Utility
-  attr_reader :number, :rent, :square_footage, :number_of_bedrooms, :number_of_bathrooms
+  attr_reader :number, :rent, :square_footage, :number_of_bedrooms, :number_of_bathrooms, :tenants
 
   # has a number, rent, square footage, number of bedrooms, and number of bathrooms
   def initialize number, rent, square_footage, number_of_bedrooms, number_of_bathrooms
@@ -16,12 +16,6 @@ class Apartment
 
     # has many tenants
     @tenants = []
-  end
-
-  # the list of tenants should not be modified directly
-  # (bonus: actually prevent it from being modified directly)
-  def tenants
-    @tenants.map {|t| t.dup}
   end
 
   # has a method to add a tenant that raises an error if the tenant has a "bad" credit rating,
